@@ -16,7 +16,11 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 executable InfoProxy
-  main-is:             Main.hs
+  if os(windows)
+    main-is: windows/Main.hs
+  else
+    main-is: unix/Main.hs
+    build-depends: unix
   other-modules:       Config
                      , GetIS
                      , Logger
@@ -34,7 +38,7 @@ executable InfoProxy
                      , Server
                      , ServerPing
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.11
+  build-depends:       base >=4.9 && <5
                      , aeson
                      , async
                      , base64-bytestring
@@ -54,7 +58,6 @@ executable InfoProxy
                      , optparse-applicative
                      , text
                      , transformers
-                     , unix
                      , yaml
   hs-source-dirs:      src
   default-language:    Haskell2010
