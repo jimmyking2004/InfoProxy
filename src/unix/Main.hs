@@ -18,6 +18,7 @@ import System.Directory (doesFileExist)
 import System.Exit
 import System.IO
 import System.IO.Error
+import System.Posix.Signals
 
 import Config
 import Logger
@@ -34,10 +35,20 @@ main = do
     (log, logCleanup) <- setupLogger
     serverConfigs <- zipWithM (serverToServerConfig log) [1..] $ servers config
 
+    -- Shutdown Handler (SIGINT (Ctrl-C), SIGTERM)
+    shutdown <- newEmptyMVar
+    installHandler sigINT  (CatchOnce $ putMVar shutdown ()) Nothing
+    installHandler sigTERM (CatchOnce $ putMVar shutdown ()) Nothing
+
     log ("Starting Servers..." :: String)
     threads <- forM serverConfigs $ async . runReaderT startServer
     let waitForWorkers = forM_ threads wait
-    waitForWorkers
+
+    race (takeMVar shutdown) waitForWorkers >>= \case
+        Left _ -> do
+            putStrLn "Received Shutdown signal"
+            forM_ threads $ flip cancelWith ShutdownException
+        Right _ -> return ()
     log ("Bye!" :: String)
     logCleanup
 
@@ -99,4 +110,4 @@ jsonToText :: ToJSON a => a -> T.Text
 jsonToText = T.decodeUtf8 . BSL.toStrict . JSON.encode
 
 putErrLn :: String -> IO ()
-putErrLn = hPutStrLn stderr
+putErrLn = hPutStrLn stderr 
