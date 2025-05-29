@@ -32,19 +32,14 @@ main = do
     config      <- readConfig oConfig
 
     (log, logCleanup) <- setupLogger
-    if silent config
-      then do
-        log ("Silent mode enabled. Not starting any servers." :: String)
-        logCleanup
-        exitSuccess
-      else do
-        serverConfigs <- zipWithM (serverToServerConfig log) [1..] $ servers config
-        log ("Starting Servers..." :: String)
-        threads <- forM serverConfigs $ async . runReaderT startServer
-        let waitForWorkers = forM_ threads wait
-        waitForWorkers
-        log ("Bye!" :: String)
-        logCleanup
+    serverConfigs <- zipWithM (serverToServerConfig log) [1..] $ servers config
+
+    log ("Starting Servers..." :: String)
+    threads <- forM serverConfigs $ async . runReaderT startServer
+    let waitForWorkers = forM_ threads wait
+    waitForWorkers
+    log ("Bye!" :: String)
+    logCleanup
 
 readConfig :: FilePath -> IO Config
 readConfig configPath = do
